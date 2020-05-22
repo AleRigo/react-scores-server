@@ -50,6 +50,8 @@ app.get('/api/courses/:code', (req, res) => {
 // GET /exams
 app.get('/api/exams', (req, res) => {
   dao.listExams()
+  //Use to artificially delay the response (e.g., to test 'Loading' status etc.)
+  //.then((exams) => new Promise((resolve) => {setTimeout(resolve, 1000, exams)}) )
   .then((exams) => res.json(exams))
   .catch((err)=>res.status(503).json(dbErrorObj));
 });
@@ -94,9 +96,7 @@ app.put('/api/exams/:code', [
         const exam = req.body;
         dao.updateExam(exam)
             .then((result) => res.status(200).end())
-            .catch((err) => res.status(500).json({
-                errors: [{'param': 'Server', 'msg': err}],
-            }));
+            .catch((err)=>res.status(503).json(dbErrorObj));
     }
 });
 
