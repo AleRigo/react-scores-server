@@ -88,15 +88,14 @@ app.put('/api/exams/:code', [
 ], (req,res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({errors: errors.array()});
-  }
-    if(!req.params.code){
-        res.status(400).end();
-    } else {
-        const exam = req.body;
-        dao.updateExam(exam)
-            .then((result) => res.status(200).end())
-            .catch((err)=>res.status(503).json(dbErrorObj));
+    res.status(422).json({errors: errors.array()});
+  } else if (!req.params.code){
+    res.status(400).end();
+  } else {
+    const exam = req.body;
+    dao.updateExam(exam)
+      .then((result) => res.status(200).end())
+      .catch((err)=>res.status(503).json(dbErrorObj));
     }
 });
 
