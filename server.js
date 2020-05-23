@@ -12,9 +12,6 @@ app.use(morgan('tiny'));
 // Process body content
 app.use(express.json());
 
-// Set-up the 'client' component as a static website
-app.use(express.static('client'));
-app.get('/', (req, res) => res.redirect('/index.html'));
 
 // DB error
 const dbErrorObj = { errors: [{'param': 'Server', 'msg': 'Database error'}] };
