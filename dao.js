@@ -112,3 +112,18 @@ exports.deleteExam = function (course_code) {
     });
   });
 }
+
+exports.checkUserPwd = function (user, pass) {
+  return new Promise((resolve, reject) => {
+    if (user==='testuser') {
+      if (pass=='testpwd') {
+        const userID = 'userID123';
+        resolve(userID);
+      } else {
+        reject(null);
+      }
+    } else {
+      reject(null);
+    }
+  });  
+}
