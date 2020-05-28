@@ -1,5 +1,7 @@
 'use strict';
 
+const bcrypt = require('bcrypt');
+
 // DAO module for accessing courses and exams
 // Data Access Object
 
@@ -41,18 +43,17 @@ exports.readCourseByCode = function (code) {
   });
 };
 
-exports.listExams = function () {
+exports.listExams = function (userID) {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT course_code, score, date, name FROM exam, course' +
-      ' WHERE course_code=code';
+      ' WHERE course_code=code AND username = ?';
 
     // execute query and get all results into `rows`
-    db.all(sql, (err, rows) => {
+    db.all(sql, [userID], (err, rows) => {
       if (err) {
         reject(err);
         return;
       }
-
       // transform 'rows' of query results into an array of objects
       const exams = rows.map((e) => (
         {
@@ -67,10 +68,10 @@ exports.listExams = function () {
   });
 };
 
-exports.createExam = function (exam) {
+exports.createExam = function (exam, userID) {
   return new Promise((resolve, reject) => {
-    const sql = 'INSERT INTO exam(course_code, date, score) VALUES(?, DATE(?), ?)';
-    db.run(sql, [exam.coursecode, exam.date, exam.score], function (err) {
+    const sql = 'INSERT INTO exam(course_code, date, score, username) VALUES(?, DATE(?), ?, ?)';
+    db.run(sql, [exam.coursecode, exam.date, exam.score, userID], function (err) {
       if (err) {
         reject(err);
         return;
@@ -83,10 +84,10 @@ exports.createExam = function (exam) {
 /**
  * Update an exam given the exam with its course_code
  */
-exports.updateExam = function (exam) {
+exports.updateExam = function (exam, userID) {
   return new Promise((resolve, reject) => {
-    const sql = 'UPDATE exam SET date=DATE(?), score=? WHERE course_code = ?';
-    db.run(sql, [exam.date, exam.score, exam.coursecode], function (err) {
+    const sql = 'UPDATE exam SET date=DATE(?), score=? WHERE course_code = ? AND username = ?';
+    db.run(sql, [exam.date, exam.score, exam.coursecode, userID], function (err) {
       if (err) {
         reject(err);
         return;
@@ -100,10 +101,10 @@ exports.updateExam = function (exam) {
 /**
  * Delete an exam given the course_code
  */
-exports.deleteExam = function (course_code) {
+exports.deleteExam = function (course_code, userID) {
   return new Promise((resolve, reject) => {
-    const sql = 'DELETE FROM exam WHERE course_code = ?';
-    db.run(sql, [course_code], (err) => {
+    const sql = 'DELETE FROM exam WHERE course_code = ? AND username = ?';
+    db.run(sql, [course_code, userID], (err) => {
       if (err) {
         reject(err);
         return;
@@ -113,17 +114,39 @@ exports.deleteExam = function (course_code) {
   });
 }
 
-exports.checkUserPwd = function (user, pass) {
+
+exports.checkUserPass = function (user, pass) {
   return new Promise((resolve, reject) => {
-    if (user==='testuser') {
-      if (pass=='testpwd') {
-        const userID = 'userID123';
-        resolve(userID);
-      } else {
-        reject(null);
+    const sql = 'SELECT username, passwordhash, name FROM user WHERE username = ?';
+    // execute query and get all results into `rows`
+    db.all(sql, [user], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
       }
-    } else {
-      reject(null);
-    }
-  });  
+      if (rows.length === 0) {
+        reject(null);
+        return;
+      }
+      const passwordHashDb = rows[0].passwordhash;
+
+      // bcrypt.compare might be computationally heavy, thus it call a callback function when completed
+      bcrypt.compare(pass, passwordHashDb, function (err, res) {
+        if (err)
+          reject(err);
+        else {
+          if (res) {
+            resolve({
+              userID: rows[0].username,
+              name: rows[0].name,
+            });
+            return;
+          } else {
+            reject(null);
+            return;
+          }
+        }
+      });
+    });
+  });
 }

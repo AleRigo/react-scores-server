@@ -7,10 +7,10 @@ const csrf = require('csurf');
 const { check, validationResult } = require('express-validator'); // validation library
 const dao = require('./dao.js');
 
+const jwtSecret = require('./secret.js');
+
 const app = express();
 const port = 3001;
-
-const jwtSecret = '6xvL4xkAAbG49hcXf5GIYSvkDICiUAR6EdR5dLdwW7hMzUjjMUe9t6M5kSAYxsvX';
 
 // Set-up logging
 app.use(morgan('tiny'));
@@ -30,11 +30,11 @@ const expireTime = 300; //seconds
 app.post('/api/login', (req, res) => {
   const username = req.body.username;
   const password = req.body.password;
-  dao.checkUserPwd(username, password)
-    .then((userID) => {
-      const token = jsonwebtoken.sign({ user: userID }, jwtSecret, {expiresIn: expireTime});
+  dao.checkUserPass(username, password)
+    .then((userObj) => {
+      const token = jsonwebtoken.sign({ userID: userObj.userID }, jwtSecret, {expiresIn: expireTime});
       res.cookie('token', token, { httpOnly: true, sameSite: true, maxAge: 1000*expireTime });
-      res.end();
+      res.json(userObj);
     }).catch(
       // Delay response when wrong user/pass is sent to avoid fast guessing attempts
       () => new Promise((resolve) => {
@@ -112,7 +112,10 @@ app.get('/api/courses/:code', (req, res) => {
 
 // GET /exams
 app.get('/api/exams', (req, res) => {
-  dao.listExams()
+  // Extract userID from JWT payload
+  // check if req.user is present, in case the API is used without authentication
+  const userID = req.user && req.user.userID;
+  dao.listExams(userID)
     //Use to artificially delay the response (e.g., to test 'Loading' status etc.)
     //.then((exams) => new Promise((resolve) => {setTimeout(resolve, 1000, exams)}) )
     .then((exams) => res.json(exams))
@@ -134,11 +137,13 @@ app.post('/api/exams', csrfProtection, [
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
+  // Extract userID from JWT payload
+  const userID = req.user && req.user.userID;
   dao.createExam({
     coursecode: req.body.coursecode,
     score: req.body.score,
     date: req.body.date
-  }).then((result) => res.end())
+  }, userID).then((result) => res.end())
     .catch((err) => res.status(503).json(dbErrorObj));
 });
 
@@ -149,6 +154,9 @@ app.put('/api/exams/:code', csrfProtection, [
   check('coursecode').isLength({ min: 7, max: 7 }),
   check('code').isLength({ min: 7, max: 7 }),
 ], (req, res) => {
+  /*if (req.user) {
+    console.log("LOG: Request with JWT payload: "+JSON.stringify(req.user));
+  }*/
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     res.status(422).json({ errors: errors.array() });
@@ -156,7 +164,9 @@ app.put('/api/exams/:code', csrfProtection, [
     res.status(400).end();
   } else {
     const exam = req.body;
-    dao.updateExam(exam)
+    // Extract userID from JWT payload
+    const userID = req.user && req.user.userID;
+    dao.updateExam(exam, userID)
       .then((result) => res.status(200).end())
       .catch((err) => res.status(503).json(dbErrorObj));
   }
@@ -165,7 +175,9 @@ app.put('/api/exams/:code', csrfProtection, [
 
 // DELETE /exams/<course_code>
 app.delete('/api/exams/:code', csrfProtection, (req, res) => {
-  dao.deleteExam(req.params.code)
+  // Extract userID from JWT payload
+  const userID = req.user && req.user.userID;
+  dao.deleteExam(req.params.code, userID)
     .then((result) => res.end())
     .catch((err) => res.status(503).json(dbErrorObj));
 });
