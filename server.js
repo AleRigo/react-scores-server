@@ -7,7 +7,8 @@ const csrf = require('csurf');
 const { check, validationResult } = require('express-validator'); // validation library
 const dao = require('./dao.js');
 
-const jwtSecret = require('./secret.js');
+const jwtSecretContent = require('./secret.js');
+const jwtSecret = jwtSecretContent.jwtSecret;
 
 const app = express();
 const port = 3001;
