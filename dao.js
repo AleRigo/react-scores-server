@@ -150,3 +150,25 @@ exports.checkUserPass = function (user, pass) {
     });
   });
 }
+
+exports.loadUserInfo = function (userID) {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT username, name FROM user WHERE username = ?';
+    // execute query and get all results into `rows`
+    db.all(sql, [userID], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      if (rows.length === 0) {
+        reject(null);
+        return;
+      }
+      resolve({
+        userID: rows[0].username,
+        name: rows[0].name,
+      });
+      return;
+    });
+  });
+}

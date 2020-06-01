@@ -38,7 +38,7 @@ app.post('/api/login', (req, res) => {
       res.json(userObj);
     }).catch(
       // Delay response when wrong user/pass is sent to avoid fast guessing attempts
-      () => new Promise((resolve) => {
+      (test) => new Promise((resolve) => {
         setTimeout(resolve, 1000)
       }).then(
            () => res.status(401).end()
@@ -83,6 +83,21 @@ app.use(function (err, req, res, next) {
     res.status(401).json(authErrorObj);
   }
 });
+
+
+// GET /user : needed to know which is the user name when the user is already authenticated and
+// somebody reloaded the page with the browser
+// NO need to protect with CSRF: it is a GET request
+app.get('/api/user', (req, res) => {
+  // Extract userID from JWT payload
+  const userID = req.user && req.user.userID;
+  dao.loadUserInfo(userID)   // Only retrieve user info: jwt would stop if not authorized
+  .then((userObj) => {
+    res.json(userObj);
+  }).catch((err) => res.status(503).json(dbErrorObj));
+});
+
+
 
 // REST API endpoints
 
